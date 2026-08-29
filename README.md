@@ -176,7 +176,27 @@ Run static analysis when PSScriptAnalyzer is installed:
 Invoke-ScriptAnalyzer -Path . -Recurse
 ```
 
-The test suite is compatible with the available Pester 3.4.0 syntax. Run an additional smoke test in Windows PowerShell 5.1 before production use.
+Run an additional smoke test in Windows PowerShell 5.1 before production use.
+
+## Requisitos de teste
+
+A execução do WindowsCleanup não requer módulos externos.
+
+A suite de testes requer Pester 5.7.1 e é validada com:
+
+- Windows PowerShell 5.1;
+- PowerShell 7.x.
+
+O Pester 3.4.0 integrado em algumas versões do Windows não é suportado pela suite de testes. Instale a versão requerida em paralelo:
+
+```powershell
+Install-Module `
+    -Name Pester `
+    -RequiredVersion 5.7.1 `
+    -Scope CurrentUser `
+    -Force `
+    -SkipPublisherCheck
+```
 
 ## Repository Hygiene
 
