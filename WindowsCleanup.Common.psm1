@@ -24,23 +24,106 @@ function Test-DescendantPath {
 }
 
 function Test-NoReparsePointInExistingParents {
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$Path,
-        [Parameter(Mandatory)][string]$StopAtRoot
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$StopAtRoot
     )
-    $stop = ConvertTo-NormalizedPath $StopAtRoot
-    $currentPath = Split-Path -Parent (ConvertTo-NormalizedPath $Path)
+
+    try {
+        $normalizedPath = ConvertTo-NormalizedPath -Path $Path
+        $stop = ConvertTo-NormalizedPath -Path $StopAtRoot
+        $currentPath = Split-Path -Path $normalizedPath -Parent
+    }
+    catch {
+        return $false
+    }
+
+    if ([string]::IsNullOrWhiteSpace($currentPath)) {
+        return $false
+    }
+
+    # O diretório pai tem de ser a própria raiz de paragem
+    # ou um descendente dessa raiz.
+    if (
+        $currentPath -ine $stop -and
+        -not (Test-DescendantPath -Path $currentPath -Root $stop)
+    ) {
+        return $false
+    }
+
     while (-not [string]::IsNullOrWhiteSpace($currentPath)) {
-        $current = ConvertTo-NormalizedPath $currentPath
-        if (Test-Path -LiteralPath $current -PathType Container) {
-            $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
-            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return $false }
+        try {
+            $current = ConvertTo-NormalizedPath -Path $currentPath
         }
-        if ($current -ieq $stop) { return $true }
-        $parent = Split-Path -Parent $current
-        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -ieq $current) { break }
+        catch {
+            return $false
+        }
+
+        # Proteção defensiva: nunca permitir que a travessia
+        # saia da raiz autorizada.
+        if (
+            $current -ine $stop -and
+            -not (Test-DescendantPath -Path $current -Root $stop)
+        ) {
+            return $false
+        }
+
+        if (Test-Path -LiteralPath $current -PathType Container) {
+            try {
+                $item = Get-Item `
+                    -LiteralPath $current `
+                    -Force `
+                    -ErrorAction Stop
+            }
+            catch {
+                return $false
+            }
+
+            if (
+                ($item.Attributes -band
+                    [IO.FileAttributes]::ReparsePoint) -ne 0
+            ) {
+                return $false
+            }
+        }
+
+        if ($current -ieq $stop) {
+            return $true
+        }
+
+        # Evita chamar Split-Path sobre a raiz do volume.
+        $volumeRoot = [IO.Path]::GetPathRoot($current)
+
+        if (
+            -not [string]::IsNullOrWhiteSpace($volumeRoot) -and
+            $current.TrimEnd('\') -ieq $volumeRoot.TrimEnd('\')
+        ) {
+            return $false
+        }
+
+        try {
+            $parent = Split-Path -Path $current -Parent
+        }
+        catch {
+            return $false
+        }
+
+        if (
+            [string]::IsNullOrWhiteSpace($parent) -or
+            $parent -ieq $current
+        ) {
+            return $false
+        }
+
         $currentPath = $parent
     }
+
     return $false
 }
 
