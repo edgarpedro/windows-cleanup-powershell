@@ -1,0 +1,40 @@
+# WindowsCleanup runtime artifacts
+*.log
+manifest.csv
+manifest.csv.sha256
+summary.json
+completed.json
+journal.jsonl
+
+/runtime/
+/Runs/
+/Quarantine/
+
+# Allow sanitized documentation examples
+!examples/manifest.csv
+!examples/manifest.csv.sha256
+!examples/summary.json
+!examples/completed.json
+
+# PowerShell and editor temporary files
+*.bak
+*.tmp
+*.temp
+*~
+*.swp
+
+.vscode/
+.idea/
+
+# Test output
+/TestResults/
+/coverage/
+*.trx
+*.coverage
+*.coveragexml
+coverage.xml
+
+# Operating system noise
+.DS_Store
+Thumbs.db
+Desktop.ini
