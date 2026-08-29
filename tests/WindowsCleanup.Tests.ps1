@@ -1,17 +1,51 @@
 #requires -Version 5.1
 
 BeforeAll {
-    $repositoryRoot = Split-Path -Path $PSScriptRoot -Parent
-    $modulePath = Join-Path $repositoryRoot 'WindowsCleanup.Common.psm1'
-    $cleanPath = Join-Path $repositoryRoot 'windows-clean.ps1'
-    $restorePath = Join-Path $repositoryRoot 'windows-clean-restore.ps1'
-    $expirePath = Join-Path $repositoryRoot 'windows-clean-expire.ps1'
-    $purgePath = Join-Path $repositoryRoot 'windows-clean-purge.ps1'
+    $script:repositoryRoot = Split-Path `
+        -Path $PSScriptRoot `
+        -Parent
+
+    $script:modulePath = Join-Path `
+        $script:repositoryRoot `
+        'WindowsCleanup.Common.psm1'
+
+    $script:cleanPath = Join-Path `
+        $script:repositoryRoot `
+        'windows-clean.ps1'
+
+    $script:restorePath = Join-Path `
+        $script:repositoryRoot `
+        'windows-clean-restore.ps1'
+
+    $script:expirePath = Join-Path `
+        $script:repositoryRoot `
+        'windows-clean-expire.ps1'
+
+    $script:purgePath = Join-Path `
+        $script:repositoryRoot `
+        'windows-clean-purge.ps1'
+
+    $requiredFiles = @(
+        $script:modulePath
+        $script:cleanPath
+        $script:restorePath
+        $script:expirePath
+        $script:purgePath
+    )
+
+    foreach ($requiredFile in $requiredFiles) {
+        if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+            throw "Required project file not found: $requiredFile"
+        }
+    }
 }
 
 Describe 'WindowsCleanup.Common' {
     BeforeAll {
-        Import-Module $modulePath -Force
+        Import-Module `
+            -Name $script:modulePath `
+            -Force `
+            -ErrorAction Stop
 
         $reparseSupported = $false
         $reparseSkipReason = 'The test environment does not support junction creation.'
@@ -81,8 +115,8 @@ Describe 'WindowsCleanup.Common' {
     }
 
     It 'deduplicates authorized roots by path in implementation' {
-        (Get-Content -LiteralPath $modulePath -Raw) | Should -Match 'ContainsKey\(\$key\)'
-        (Get-Content -LiteralPath $cleanPath -Raw) | Should -Match 'WindowsCleanup.Common.psm1'
+        (Get-Content -LiteralPath $script:modulePath -Raw) | Should -Match 'ContainsKey\(\$key\)'
+        (Get-Content -LiteralPath $script:cleanPath -Raw) | Should -Match 'WindowsCleanup.Common.psm1'
     }
 
     It 'skips reparse points when supported by the filesystem' {
@@ -95,17 +129,17 @@ Describe 'WindowsCleanup.Common' {
 Describe 'WindowsCleanup script contracts' {
     It 'keeps the operational scripts independent and imports the common module' {
         $htmlPattern = ([char]60) + 'br' + ([char]62) + '|&' + 'lt;|&' + 'gt;|&' + 'amp;'
-        foreach ($path in @($cleanPath, $restorePath, $expirePath)) {
+        foreach ($path in @($script:cleanPath, $script:restorePath, $script:expirePath)) {
             (Test-Path -LiteralPath $path -PathType Leaf) | Should -Be $true
             (Get-Content -LiteralPath $path -Raw) | Should -Match 'WindowsCleanup.Common.psm1'
             ([regex]::IsMatch((Get-Content -LiteralPath $path -Raw), $htmlPattern)) | Should -Be $false
         }
-        (Get-Content -LiteralPath $purgePath -Raw) | Should -Match 'windows-clean-expire.ps1'
-        (Get-Content -LiteralPath $purgePath -Raw) | Should -Not -Match 'Remove-Item'
+        (Get-Content -LiteralPath $script:purgePath -Raw) | Should -Match 'windows-clean-expire.ps1'
+        (Get-Content -LiteralPath $script:purgePath -Raw) | Should -Not -Match 'Remove-Item'
     }
 
     It 'uses literal paths and does not force Move-Item' {
-        foreach ($path in @($cleanPath, $restorePath, $expirePath, $purgePath)) {
+        foreach ($path in @($script:cleanPath, $script:restorePath, $script:expirePath, $script:purgePath)) {
             $content = Get-Content -LiteralPath $path -Raw
             ([regex]::IsMatch($content, 'Move-Item[^\r\n]*-Force')) | Should -Be $false
             ([regex]::IsMatch($content, 'Remove-Item\s+-Path')) | Should -Be $false
@@ -113,7 +147,7 @@ Describe 'WindowsCleanup script contracts' {
     }
 
     It 'contains the required safety policies' {
-        $clean = Get-Content -LiteralPath $cleanPath -Raw
+        $clean = Get-Content -LiteralPath $script:cleanPath -Raw
         $clean | Should -Match 'ValidateRange\(7, 3650\)'
         $clean | Should -Match 'ValidateRange\(1, 50000\)'
         $clean | Should -Match 'ValidateRange\(1, 20\)'
@@ -124,7 +158,7 @@ Describe 'WindowsCleanup script contracts' {
     }
 
     It 'requires integrity and completion artefacts for restore and expire' {
-        foreach ($path in @($restorePath, $expirePath)) {
+        foreach ($path in @($script:restorePath, $script:expirePath)) {
             $content = Get-Content -LiteralPath $path -Raw
             $content | Should -Match 'manifest.csv'
             $content | Should -Match 'manifest.csv.sha256'
