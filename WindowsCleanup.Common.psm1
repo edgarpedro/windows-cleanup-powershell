@@ -216,7 +216,7 @@ function New-WindowsCleanupManifestRecord {
         [AllowNull()][datetime]$LastWriteTimeUtc,
         [Parameter(Mandatory)][string]$Action,
         [Parameter(Mandatory)][string]$Status,
-        [AllowNull()][string]$Error
+        [AllowNull()][string]$ErrorMessage
     )
     $lastWrite = $null
     if ($null -ne $LastWriteTimeUtc) { $lastWrite = $LastWriteTimeUtc.ToString('o', [Globalization.CultureInfo]::InvariantCulture) }
@@ -224,7 +224,7 @@ function New-WindowsCleanupManifestRecord {
         SchemaVersion = 1; RunId = $RunId; RootName = $RootName; RootPath = $RootPath; RelativePath = $RelativePath
         OriginalPath = $OriginalPath; QuarantinePath = $QuarantinePath; Length = $Length; Sha256 = $Sha256
         LastWriteTimeUtc = $lastWrite; OperationUtc = (Get-Date).ToUniversalTime().ToString('o', [Globalization.CultureInfo]::InvariantCulture)
-        Action = $Action; Status = $Status; Error = $Error
+        Action = $Action; Status = $Status; Error = $ErrorMessage
     }
 }
 
